@@ -9,31 +9,36 @@ namespace Server
 {
     class Program
     {
-        static List<TcpClient> clients = new List<TcpClient>();
+        static List<UdpClient> udpClients = new List<UdpClient>();
+        static List<TcpClient> tcpClients = new List<TcpClient>();
 
         static async Task Main(string[] args)
         {
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
-            int port = 8080;
+            int tcpPort = 8888;
+            int udpPort = 8889;
 
-            TcpListener listener = new TcpListener(ipAddress, port);
+            TcpListener listener = new TcpListener(ipAddress, tcpPort);
             listener.Start();
-            Console.WriteLine("Server started.");
+            Console.WriteLine($"Server started. Listening on TCP port {tcpPort} and UDP port {udpPort}");
+
+            // Listen for UDP packets in a separate thread
+            _ = Task.Run(() => ListenForUdpPackets(ipAddress, udpPort));
 
             while (true)
             {
-                TcpClient client = await listener.AcceptTcpClientAsync();
-                clients.Add(client);
-                Console.WriteLine("Client connected.");
+                TcpClient tcpClient = await listener.AcceptTcpClientAsync();
+                tcpClients.Add(tcpClient);
+                Console.WriteLine("TCP client connected.");
 
-                // Handle client in separate task
-                _ = Task.Run(() => HandleClient(client));
+                // Handle TCP client in separate task
+                _ = Task.Run(() => HandleTcpClient(tcpClient));
             }
         }
 
-        static async Task HandleClient(TcpClient client)
+        static async Task HandleTcpClient(TcpClient tcpClient)
         {
-            NetworkStream stream = client.GetStream();
+            NetworkStream stream = tcpClient.GetStream();
 
             // Send initial position to client
             byte[] initialPosition = Encoding.ASCII.GetBytes("0,0");
@@ -45,17 +50,42 @@ namespace Server
                 int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                 string message = Encoding.ASCII.GetString(buffer, 0, bytesRead);
 
-                // Relay message to all clients
-                foreach (TcpClient c in clients)
+                // Relay message to all TCP clients
+                foreach (TcpClient client in tcpClients)
                 {
-                    if (c != client)
+                    if (client != tcpClient)
                     {
-                        NetworkStream clientStream = c.GetStream();
+                        NetworkStream clientStream = client.GetStream();
                         await clientStream.WriteAsync(buffer, 0, bytesRead);
                     }
                 }
 
-                Console.WriteLine($"Message from client: {message}");
+                Console.WriteLine($"TCP message from client: {message}");
+            }
+        }
+
+        static async Task ListenForUdpPackets(IPAddress ipAddress, int udpPort)
+        {
+            UdpClient udpListener = new UdpClient(udpPort);
+
+            while (true)
+            {
+                // Receive UDP packet
+                UdpReceiveResult result = await udpListener.ReceiveAsync();
+                byte[] receivedBytes = result.Buffer;
+                string message = Encoding.ASCII.GetString(receivedBytes);
+
+                // Relay message to all UDP clients
+                foreach (UdpClient udpClient in udpClients)
+                {
+                    // Don't send the message back to the sender
+                    if (!result.RemoteEndPoint.Equals(udpClient.Client.LocalEndPoint))
+                    {
+                        await udpClient.SendAsync(receivedBytes, receivedBytes.Length, result.RemoteEndPoint);
+                    }
+                }
+
+                Console.WriteLine($"UDP message from client: {message}");
             }
         }
     }

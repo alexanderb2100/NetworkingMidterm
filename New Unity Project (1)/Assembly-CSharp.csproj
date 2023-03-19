@@ -53,12 +53,16 @@
     <UnityVersion>2020.3.18f1</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Assets\MessageFunctions.cs" />
+    <Compile Include="Assets\ChatBoxFunctions.cs" />
     <Compile Include="Assets\cube.cs" />
+    <Compile Include="Assets\DraggableWindow.cs" />
     <Compile Include="Assets\server.cs" />
     <Compile Include="Assets\client.cs" />
-    <Compile Include="Assets\DraggableWindow.cs" />
-    <Compile Include="Assets\ChatBoxFunctions.cs" />
-    <Compile Include="Assets\MessageFunctions.cs" />
+    <Compile Include="Assets\UDPClient.cs" />
+    <Compile Include="Assets\TCPClient.cs" />
+    <Compile Include="Assets\Client1UI.cs" />
+    <Compile Include="Assets\Client2UI.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

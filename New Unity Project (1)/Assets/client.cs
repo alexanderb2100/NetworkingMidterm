@@ -11,14 +11,18 @@ namespace Client
         static async Task Main(string[] args)
         {
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
-            int port = 8080;
+            int tcpPort = 8888;
+            int udpPort = 8889;
 
-            TcpClient client = new TcpClient();
-            await client.ConnectAsync(ipAddress, port);
+            TcpClient tcpClient = new TcpClient();
+            await tcpClient.ConnectAsync(ipAddress, tcpPort);
             Console.WriteLine("Connected to server.");
 
+            UdpClient udpClient = new UdpClient();
+            udpClient.Connect(ipAddress, udpPort);
+
             // Receive initial position from server
-            NetworkStream stream = client.GetStream();
+            NetworkStream stream = tcpClient.GetStream();
             byte[] buffer = new byte[1024];
             int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
             string initialPosition = Encoding.ASCII.GetString(buffer, 0, bytesRead);
@@ -33,7 +37,7 @@ namespace Client
                 if (input.Contains(","))
                 {
                     byte[] positionUpdate = Encoding.ASCII.GetBytes(input);
-                    await stream.WriteAsync(positionUpdate, 0, positionUpdate.Length);
+                    udpClient.Send(positionUpdate, positionUpdate.Length);
                 }
 
                 // Send chat message to server
